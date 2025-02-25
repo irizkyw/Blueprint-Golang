@@ -1,16 +1,12 @@
-# Gunakan Go dengan Alpine sebagai base image untuk build
 FROM golang:1.19.5-alpine as builder
 
 WORKDIR /build
 
-# Copy go.mod dan go.sum, lalu download dependensi
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy semua kode sumber
 COPY . .
 
-# Install tool yang diperlukan
 RUN go install github.com/swaggo/swag/cmd/swag@latest 
 RUN go install github.com/go-task/task/v3/cmd/task@latest
 
