@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	controllers "backends/internal/controllers/handler"
 	"backends/internal/models"
 	"backends/internal/storage"
 	"strconv"
@@ -9,48 +10,51 @@ import (
 )
 
 type UserController struct {
+	controllers.Controller
 	DB *storage.DBClient
 }
 
 func NewUserController(db *storage.DBClient) *UserController {
-	return &UserController{DB: db}
+	return &UserController{
+		DB: db,
+	}
 }
 
 func (uc *UserController) GetUsers(c *fiber.Ctx) error {
 	var users []models.User
 	if err := uc.DB.All("users", &users); err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Database error"})
+		return uc.Error(c, "Database error", 500)
 	}
 
-	return c.JSON(users)
+	return uc.Success(c, users, fiber.StatusOK)
 }
 
 func (uc *UserController) GetUserByID(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid user ID"})
+		return uc.Error(c, "Invalid user ID", 400)
 	}
 
 	var user models.User
 	if err := uc.DB.Find("users", id, &user); err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+		return uc.Error(c, "User not found", 404)
 	}
 
-	return c.JSON(user)
+	return uc.Success(c, fiber.Map{"message": "Data retrieved"}, fiber.StatusOK)
 }
 
 func (uc *UserController) CreateUser(c *fiber.Ctx) error {
 	var user models.User
 
 	if err := c.BodyParser(&user); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
+		return uc.Error(c, "Invalid request", 400)
 	}
 
 	lastID, err := uc.DB.Create("users", []string{"name", "email"}, []interface{}{user.Name, user.Email})
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Failed to insert user"})
+		return uc.Error(c, "Failed to insert user", 500)
 	}
 
 	user.ID = int(lastID)
-	return c.Status(201).JSON(fiber.Map{"message": "User created", "user": user})
+	return uc.Success(c, fiber.Map{"message": "User created", "user": user}, fiber.StatusOK)
 }

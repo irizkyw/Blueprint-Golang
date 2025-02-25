@@ -19,7 +19,11 @@ func joinColumns(columns []string) string {
 }
 
 func generatePlaceholders(count int) string {
-	return fmt.Sprintf("(%s)", stringJoin(make([]string, count), "?, "))
+	placeholders := make([]string, count)
+	for i := range placeholders {
+		placeholders[i] = "?"
+	}
+	return "(" + stringJoin(placeholders, ", ") + ")"
 }
 
 func generateUpdateSetQuery(columns []string) string {
@@ -50,7 +54,7 @@ func (c *DBClient) Find(table string, id int, dest interface{}) error {
 
 	v := reflect.ValueOf(dest)
 	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("dest harus berupa pointer ke struct")
+		return fmt.Errorf("dest must be a pointer to a struct")
 	}
 
 	columns := getStructFields(dest)
@@ -104,7 +108,7 @@ func (c *DBClient) All(table string, dest interface{}) error {
 }
 
 func (c *DBClient) Create(table string, columns []string, values []interface{}) (int64, error) {
-	query := fmt.Sprintf("INSERT INTO `%s` %s VALUES %s", table, joinColumns(columns), generatePlaceholders(len(values)))
+	query := fmt.Sprintf("INSERT INTO `%s` (%s) VALUES %s", table, joinColumns(columns), generatePlaceholders(len(columns)))
 	result, err := c.DB.Exec(query, values...)
 	if err != nil {
 		return 0, err
@@ -142,11 +146,27 @@ func getStructFields(model interface{}) []string {
 
 func copyValuesToStruct(values []interface{}, dest interface{}, columns []string) {
 	v := reflect.ValueOf(dest).Elem()
+	typ := v.Type()
+
 	for i, col := range columns {
-		field := v.FieldByName(col)
-		if field.IsValid() && field.CanSet() {
-			val := *(values[i].(*interface{}))
-			field.Set(reflect.ValueOf(val))
+		for j := 0; j < typ.NumField(); j++ {
+			field := typ.Field(j)
+			dbTag := field.Tag.Get("db")
+			if dbTag == col {
+				fieldValue := v.Field(j)
+				if fieldValue.CanSet() {
+					val := values[i].(*interface{})
+					switch fieldValue.Kind() {
+					case reflect.String:
+						fieldValue.SetString(string((*val).([]uint8)))
+					case reflect.Int, reflect.Int64:
+						fieldValue.SetInt((*val).(int64))
+					default:
+						fieldValue.Set(reflect.ValueOf(*val))
+					}
+				}
+				break
+			}
 		}
 	}
 }

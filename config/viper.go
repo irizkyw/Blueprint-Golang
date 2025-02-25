@@ -56,7 +56,7 @@ func LoadConfig() (config EnvStructs, err error) {
 		err = errors.New("MYSQL_USER is required")
 		return
 	}
-	if config.MYSQL_PASSWORD == "" {
+	if config.MYSQL_PASSWORD == "" && env == "production" {
 		err = errors.New("MYSQL_PASSWORD is required")
 		return
 	}
