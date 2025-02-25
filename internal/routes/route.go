@@ -18,4 +18,5 @@ func SetupRoutes(app *fiber.App, db *sql.DB, useAuth bool) {
 	api.Get("/users", userController.GetUsers)
 	api.Get("/users/:id", userController.GetUserByID)
 	api.Post("/users", userController.CreateUser)
+	api.Post("/users/upload", userController.UploadImage)
 }

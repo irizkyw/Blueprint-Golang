@@ -4,9 +4,13 @@ import (
 	controllers "backends/internal/controllers/handler"
 	"backends/internal/models"
 	"backends/internal/storage"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 )
 
 type UserController struct {
@@ -57,4 +61,34 @@ func (uc *UserController) CreateUser(c *fiber.Ctx) error {
 
 	user.ID = int(lastID)
 	return uc.Success(c, fiber.Map{"message": "User created", "user": user}, fiber.StatusOK)
+}
+
+func (uc *UserController) UploadImage(c *fiber.Ctx) error {
+	file, err := c.FormFile("file")
+	if err != nil {
+		fmt.Println("FormFile error:", err)
+		return uc.Error(c, "File is required", fiber.StatusBadRequest)
+	}
+
+	upload_dir, _ := filepath.Abs("./uploads")
+
+	if _, err := os.Stat(upload_dir); os.IsNotExist(err) {
+		if err := os.Mkdir(upload_dir, os.ModePerm); err != nil {
+			return uc.Error(c, "Failed to create upload directory", fiber.StatusInternalServerError)
+		}
+	}
+
+	fileExt := filepath.Ext(file.Filename)
+	generate_name := uuid.New().String() + fileExt
+	filePath := filepath.Join(upload_dir, generate_name)
+
+	if err := c.SaveFile(file, filePath); err != nil {
+		return uc.Error(c, "Failed to save file", fiber.StatusInternalServerError)
+	}
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return uc.Error(c, "File save failed", fiber.StatusInternalServerError)
+	}
+
+	return uc.Success(c, fiber.Map{"message": "File uploaded successfully", "file": generate_name}, fiber.StatusOK)
 }
