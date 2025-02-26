@@ -88,7 +88,6 @@ func generateModels(db *gorm.DB) {
 	}
 
 	for _, table := range tables {
-		// Lewati tabel yang ada di daftar pengecualian
 		if excludedTables[table] {
 			fmt.Print(excludedTables[table])
 			continue
@@ -96,7 +95,6 @@ func generateModels(db *gorm.DB) {
 		generateModelFile(db, table)
 	}
 
-	// Perbarui registry setelah semua model dibuat
 	updateModelRegistry()
 	fmt.Println("✅ Models generated successfully!")
 }
@@ -104,12 +102,10 @@ func generateModels(db *gorm.DB) {
 func generateModelFile(db *gorm.DB, tableName string) {
 	titleCase := cases.Title(language.English)
 	structName := titleCase.String(strings.ReplaceAll(tableName, "_", " "))
-	// Jika nama tabel berakhiran "s", ubah menjadi singular
 	if strings.HasSuffix(structName, "s") {
 		structName = structName[:len(structName)-1]
 	}
 
-	// Hindari penamaan "Registry" yang bisa menyebabkan konflik dengan registry.go
 	if structName == "Registry" {
 		fmt.Println("⚠️ Skipping Registry model to prevent conflicts.")
 		return
@@ -148,7 +144,6 @@ type %s struct {`, structName)
 		fieldName := titleCase.String(strings.ReplaceAll(col.Field, "_", " "))
 		fieldName = strings.ReplaceAll(fieldName, " ", "")
 
-		// Menentukan tipe data
 		colType := "string"
 		if strings.Contains(col.Type, "int") {
 			colType = "int"
@@ -178,7 +173,6 @@ type %s struct {`, structName)
 	fmt.Println("✅ Model file generated:", modelFilename)
 }
 
-// Update otomatis registry.go di models
 func updateModelRegistry() {
 	modelsDir := "internal/models"
 	files, err := filepath.Glob(modelsDir + "/*.go")
@@ -186,9 +180,7 @@ func updateModelRegistry() {
 		log.Fatal("Error reading model files:", err)
 	}
 
-	excludedFiles := map[string]bool{
-		"registry.go": true, // Hindari memasukkan registry.go
-	}
+	excludedFiles := map[string]bool{}
 
 	var registryEntries []string
 	titleCase := cases.Title(language.English)
@@ -206,7 +198,6 @@ func updateModelRegistry() {
 		registryEntries = append(registryEntries, fmt.Sprintf("\tnew(%s),", structName))
 	}
 
-	// Jika tidak ada model yang tersisa, kosongkan registry
 	registryContent := `package models
 
 var ModelRegistry = []interface{}{`
@@ -312,7 +303,6 @@ func updateRegistryMigrations() {
 		return
 	}
 
-	// Pastikan hanya memperbarui migrations/registry.go
 	registryContent := fmt.Sprintf(`package migrations
 
 import "gorm.io/gorm"
@@ -322,7 +312,7 @@ var MigrationRegistry = map[string]func(*gorm.DB) error{
 }
 `, strings.Join(registryEntries, "\n"))
 
-	err = os.WriteFile("migrations/registry.go", []byte(registryContent), 0644) // <- Pastikan ini benar
+	err = os.WriteFile("migrations/registry.go", []byte(registryContent), 0644)
 	if err != nil {
 		log.Fatal("Error updating migrations/registry.go:", err)
 	}
@@ -361,9 +351,8 @@ func downTable(dsn string, tableName string) {
 		db.Migrator().DropTable(tableName)
 		deleteModelFile(tableName)
 
-		// Periksa apakah masih ada model sebelum memperbarui registry
 		modelFiles, _ := filepath.Glob("internal/models/*.go")
-		if len(modelFiles) > 1 { // Minimal harus ada registry.go
+		if len(modelFiles) > 1 {
 			updateModelRegistry()
 		} else {
 			fmt.Println("⚠️ No models left to register. Registry cleared.")
