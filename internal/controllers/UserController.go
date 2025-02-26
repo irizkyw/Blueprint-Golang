@@ -59,7 +59,7 @@ func (uc *UserController) CreateUser(c *fiber.Ctx) error {
 		return uc.Error(c, "Failed to insert user", 500)
 	}
 
-	user.ID = int(lastID)
+	user.Id = int(lastID)
 	return uc.Success(c, fiber.Map{"message": "User created", "user": user}, fiber.StatusOK)
 }
 
