@@ -134,6 +134,7 @@ func generateModelFile(db *gorm.DB, tableName string) {
 		Default string
 		Extra   string
 	}{}
+
 	db.Raw(fmt.Sprintf("SHOW COLUMNS FROM %s", tableName)).Scan(&columns)
 
 	modelContent := fmt.Sprintf(`package models
@@ -180,20 +181,23 @@ func updateModelRegistry() {
 		log.Fatal("Error reading model files:", err)
 	}
 
-	excludedFiles := map[string]bool{}
+	excludedFiles := map[string]bool{
+		"Registry": true,
+	}
 
 	var registryEntries []string
 	titleCase := cases.Title(language.English)
 
 	for _, file := range files {
 		base := filepath.Base(file)
-		if excludedFiles[base] {
-			continue
-		}
 
 		name := strings.TrimSuffix(base, ".go")
 		structName := titleCase.String(strings.ReplaceAll(name, "_", " "))
 		structName = strings.ReplaceAll(structName, " ", "")
+
+		if excludedFiles[structName] {
+			continue
+		}
 
 		registryEntries = append(registryEntries, fmt.Sprintf("\tnew(%s),", structName))
 	}
