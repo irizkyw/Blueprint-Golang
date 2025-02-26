@@ -1,34 +1,14 @@
 version: '3.8'
 
 services:
-  app:
-    build: .
-    container_name: go_app
-    ports:
-      - "8080:8080"
-    depends_on:
-      db:
-        condition: service_healthy
-    env_file:
-      - app.env
-    environment:
-      - GO_ENV=development
-      - DB_HOST=db
-      - DB_USER=root
-      - DB_NAME=db_go
-      - DB_PASSWORD=root
-    networks:
-      - backend
-
   db:
     image: mysql:8.0
     container_name: mysql_db
     restart: always
     environment:
       MYSQL_DATABASE: db_go
-      MYSQL_USER: root
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_PASSWORD: root
+      MYSQL_PASSWORD: root  # Ditambahkan agar tidak ada error user
     ports:
       - "3306:3306"
     volumes:
@@ -42,24 +22,39 @@ services:
       retries: 5
       timeout: 5s
 
+  app:
+    build: .
+    container_name: go_app
+    restart: always
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_NAME=db_go
+      - DB_PASSWORD=root
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: phpmyadmin
     restart: always
+    depends_on:
+      - db
     ports:
       - "8081:80"
     environment:
       PMA_HOST: db
       PMA_USER: root
       PMA_PASSWORD: root
-    depends_on:
-      - db
     networks:
       - backend
 
-networks:
-  backend:
-    driver: bridge
-
 volumes:
   db_data:
+
+networks:
+  backend:

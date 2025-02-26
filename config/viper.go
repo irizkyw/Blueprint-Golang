@@ -39,7 +39,7 @@ func LoadConfig() (config EnvStructs, err error) {
 	err = viper.ReadInConfig()
 
 	if err != nil {
-		return EnvStructs{}, err // Return error jika gagal load config
+		return EnvStructs{}, err
 	}
 
 	err = viper.Unmarshal(&config)
