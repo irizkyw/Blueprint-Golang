@@ -19,6 +19,110 @@ import (
 	"backends/migrations"
 )
 
+// Struct untuk menyimpan metadata tabel
+type TableInfo struct {
+	Name      string
+	Columns   []ColumnInfo
+	Relations []Relation
+}
+
+// Struct untuk menyimpan informasi kolom
+type ColumnInfo struct {
+	Name string
+	Type string
+	Tag  string
+}
+
+// Struct untuk menyimpan relasi antar tabel
+type Relation struct {
+	RelatedTable string
+	ForeignKey   string
+	RelationType string // "HasOne", "HasMany", "BelongsTo", "ManyToMany"
+}
+
+// Fungsi untuk membaca metadata tabel dari database
+func getTables(db *gorm.DB) []TableInfo {
+	var tables []string
+	db.Raw("SHOW TABLES").Scan(&tables)
+
+	var tableInfos []TableInfo
+
+	for _, table := range tables {
+		columns := getColumns(db, table)
+		relations := getRelations(db, table)
+		tableInfos = append(tableInfos, TableInfo{Name: table, Columns: columns, Relations: relations})
+	}
+
+	return tableInfos
+}
+
+// Fungsi untuk membaca kolom dari tabel
+func getColumns(db *gorm.DB, tableName string) []ColumnInfo {
+	var columns []ColumnInfo
+	var result []struct {
+		Field   string `gorm:"column:Field"`
+		Type    string `gorm:"column:Type"`
+		Key     string `gorm:"column:Key"`
+		Null    string `gorm:"column:Null"`
+		Default string `gorm:"column:Default"`
+	}
+
+	db.Raw(fmt.Sprintf("SHOW COLUMNS FROM %s", tableName)).Scan(&result)
+
+	for _, row := range result {
+		colType := "string" // Default type
+		if strings.Contains(row.Type, "int") {
+			colType = "int"
+		} else if strings.Contains(row.Type, "float") || strings.Contains(row.Type, "double") || strings.Contains(row.Type, "decimal") {
+			colType = "float64"
+		} else if strings.Contains(row.Type, "bool") {
+			colType = "bool"
+		}
+
+		tag := fmt.Sprintf("gorm:\"column:%s\"", row.Field)
+		if row.Key == "PRI" {
+			tag = "gorm:\"primaryKey\""
+		} else if row.Key == "MUL" {
+			tag = fmt.Sprintf("gorm:\"index;column:%s\"", row.Field)
+		}
+
+		columns = append(columns, ColumnInfo{Name: row.Field, Type: colType, Tag: tag})
+	}
+
+	return columns
+}
+
+// membaca relasi antar tabel
+func getRelations(db *gorm.DB, tableName string) []Relation {
+	var relations []Relation
+	var result []struct {
+		Table            string `gorm:"column:TABLE_NAME"`
+		Column           string `gorm:"column:COLUMN_NAME"`
+		ReferencedTable  string `gorm:"column:REFERENCED_TABLE_NAME"`
+		ReferencedColumn string `gorm:"column:REFERENCED_COLUMN_NAME"`
+	}
+
+	query := `
+		SELECT TABLE_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME 
+		FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+		WHERE TABLE_SCHEMA = DATABASE() 
+		AND TABLE_NAME = ? 
+		AND REFERENCED_TABLE_NAME IS NOT NULL;`
+
+	db.Raw(query, tableName).Scan(&result)
+
+	for _, row := range result {
+		relationType := "BelongsTo"
+		relations = append(relations, Relation{
+			RelatedTable: row.ReferencedTable,
+			ForeignKey:   row.Column,
+			RelationType: relationType,
+		})
+	}
+
+	return relations
+}
+
 func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -42,7 +146,7 @@ func main() {
 			fmt.Println("Please provide a table name using --table=table_name")
 			return
 		}
-		createMigration(*tableName)
+		templateMigration(*tableName)
 		updateRegistryMigrations()
 	case "fresh":
 		resetDatabase(dsn)
@@ -92,40 +196,38 @@ func generateModels(db *gorm.DB) {
 			fmt.Print(excludedTables[table])
 			continue
 		}
-		generateModelFile(db, table)
+		templateModelFile(db, table)
 	}
 
 	updateModelRegistry()
 	fmt.Println("✅ Models generated successfully!")
 }
 
-func generateModelFile(db *gorm.DB, tableName string) {
+func templateModelFile(db *gorm.DB, tableName string) {
 	titleCase := cases.Title(language.English)
 	structName := titleCase.String(strings.ReplaceAll(tableName, "_", " "))
+	structName = strings.ReplaceAll(structName, " ", "")
+
 	if strings.HasSuffix(structName, "s") {
 		structName = structName[:len(structName)-1]
 	}
 
-	if structName == "Registry" {
-		fmt.Println("⚠️ Skipping Registry model to prevent conflicts.")
-		return
-	}
-
 	modelsDir := "internal/models"
 	if _, err := os.Stat(modelsDir); os.IsNotExist(err) {
-		err := os.MkdirAll(modelsDir, os.ModePerm)
-		if err != nil {
-			log.Fatal("Error creating models directory:", err)
+		if err := os.MkdirAll(modelsDir, os.ModePerm); err != nil {
+			log.Fatal("❌ Error creating models directory:", err)
 		}
 	}
 
+	// Buat file model
 	modelFilename := fmt.Sprintf("%s/%s.go", modelsDir, structName)
 	file, err := os.Create(modelFilename)
 	if err != nil {
-		log.Fatal("Error creating model file:", err)
+		log.Fatal("❌ Error creating model file:", err)
 	}
 	defer file.Close()
 
+	// Ambil informasi kolom dari tabel
 	columns := []struct {
 		Field   string
 		Type    string
@@ -137,28 +239,65 @@ func generateModelFile(db *gorm.DB, tableName string) {
 
 	db.Raw(fmt.Sprintf("SHOW COLUMNS FROM %s", tableName)).Scan(&columns)
 
+	// foreign key dari tabel
+	foreignKeys := map[string]string{}
+	rows, _ := db.Raw(fmt.Sprintf("SHOW CREATE TABLE %s", tableName)).Rows()
+	defer rows.Close()
+	for rows.Next() {
+		var table, createStmt string
+		rows.Scan(&table, &createStmt)
+		re := regexp.MustCompile("CONSTRAINT .* FOREIGN KEY \\(`(.*?)`\\) REFERENCES `(.*?)` \\(`(.*?)`\\)")
+		matches := re.FindAllStringSubmatch(createStmt, -1)
+		for _, match := range matches {
+			if len(match) > 3 {
+				foreignKeys[match[1]] = match[2] // nama field dan tabel referensi
+			}
+		}
+	}
+
+	// struct model
 	modelContent := fmt.Sprintf(`package models
 
 type %s struct {`, structName)
 
+	// Loop untuk membuat field dalam struct
 	for _, col := range columns {
 		fieldName := titleCase.String(strings.ReplaceAll(col.Field, "_", " "))
 		fieldName = strings.ReplaceAll(fieldName, " ", "")
 
 		colType := "string"
-		if strings.Contains(col.Type, "int") {
+		switch {
+		case strings.Contains(col.Type, "int"):
 			colType = "int"
-		} else if strings.Contains(col.Type, "bigint") {
+		case strings.Contains(col.Type, "bigint"):
 			colType = "int64"
-		} else if strings.Contains(col.Type, "float") || strings.Contains(col.Type, "double") || strings.Contains(col.Type, "decimal") {
+		case strings.Contains(col.Type, "float"), strings.Contains(col.Type, "double"), strings.Contains(col.Type, "decimal"):
 			colType = "float64"
-		} else if strings.Contains(col.Type, "datetime") || strings.Contains(col.Type, "timestamp") || strings.Contains(col.Type, "date") {
+		case strings.Contains(col.Type, "datetime"), strings.Contains(col.Type, "timestamp"), strings.Contains(col.Type, "date"):
 			colType = "time.Time"
 		}
 
 		gormTag := fmt.Sprintf("`gorm:\"column:%s\"`", col.Field)
 		if col.Key == "PRI" {
 			gormTag = "`gorm:\"primaryKey\"`"
+		}
+
+		// if col == foreign key
+		if fkTable, exists := foreignKeys[col.Field]; exists {
+			gormTag = fmt.Sprintf("`gorm:\"index;column:%s\"`", col.Field)
+			colType = "*int"
+			modelContent += fmt.Sprintf("\n\t%s %s %s", fieldName, colType, gormTag)
+
+			relatedStruct := titleCase.String(strings.ReplaceAll(fkTable, "_", " "))
+			relatedStruct = strings.ReplaceAll(relatedStruct, " ", "")
+			if strings.HasSuffix(relatedStruct, "s") {
+				relatedStruct = relatedStruct[:len(relatedStruct)-1]
+			}
+
+			// relasi dalam struct
+			modelContent += fmt.Sprintf("\n\t%s %s `gorm:\"foreignKey:%s;references:Id;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;\"`",
+				relatedStruct, relatedStruct, fieldName)
+			continue
 		}
 
 		modelContent += fmt.Sprintf("\n\t%s %s %s", fieldName, colType, gormTag)
@@ -168,7 +307,7 @@ type %s struct {`, structName)
 
 	_, err = file.WriteString(modelContent)
 	if err != nil {
-		log.Fatal("Error writing to model file:", err)
+		log.Fatal("❌ Error writing to model file:", err)
 	}
 
 	fmt.Println("✅ Model file generated:", modelFilename)
@@ -244,7 +383,7 @@ func extractTableName(migrationName string) string {
 	return ""
 }
 
-func createMigration(tableName string) {
+func templateMigration(tableName string) {
 	timestamp := time.Now().Format("20060102150405")
 	titleCase := cases.Title(language.English)
 	structName := titleCase.String(strings.ReplaceAll(tableName, "_", " "))
