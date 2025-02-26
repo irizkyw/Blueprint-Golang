@@ -27,7 +27,7 @@ func NewUserController(db *storage.DBClient) *UserController {
 func (uc *UserController) GetUsers(c *fiber.Ctx) error {
 	var users []models.User
 	if err := uc.DB.All("users", &users); err != nil {
-		return uc.Error(c, "Database error", 500)
+		return uc.Error(c, "Internal Server error", 500)
 	}
 
 	return uc.Success(c, users, fiber.StatusOK)

@@ -10,10 +10,8 @@ COPY . .
 RUN go install github.com/swaggo/swag/cmd/swag@latest 
 RUN go install github.com/go-task/task/v3/cmd/task@latest
 
-# RUN task docs || true
-
-# ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-# RUN task build || go build -o http-server ./cmd/http/main.go
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+RUN task build || go build -o http-server ./cmd/http/main.go
 
 FROM alpine:latest
 
@@ -21,7 +19,10 @@ WORKDIR /app
 
 COPY --from=builder /build/http-server .
 
+COPY app.env . 
+
 ENV GO_ENV=production
+ENV PORT=8080
 
 EXPOSE 8080
 

@@ -18,24 +18,28 @@ type EnvStructs struct {
 
 func LoadConfig() (config EnvStructs, err error) {
 	env := os.Getenv("GO_ENV")
-	if env == "production" {
+	if env == "production" || env == "development" {
 		return EnvStructs{
-			MYSQL_HOST:     os.Getenv("MYSQL_HOST"),
+			MYSQL_HOST:     os.Getenv("DB_HOST"),
 			MYSQL_PORT:     os.Getenv("MYSQL_PORT"),
-			MYSQL_DB:       os.Getenv("MYSQL_DB"),
-			MYSQL_USER:     os.Getenv("MYSQL_USER"),
-			MYSQL_PASSWORD: os.Getenv("MYSQL_PASSWORD"),
+			MYSQL_DB:       os.Getenv("DB_NAME"),
+			MYSQL_USER:     os.Getenv("DB_USER"),
+			MYSQL_PASSWORD: os.Getenv("DB_PASSWORD"),
 			PORT:           os.Getenv("PORT"),
 		}, nil
 	}
 
 	viper.AddConfigPath(".")
+	viper.AddConfigPath("/app")
+
 	viper.SetConfigName("app")
 	viper.SetConfigType("env")
 
+	viper.AutomaticEnv()
 	err = viper.ReadInConfig()
+
 	if err != nil {
-		return
+		return EnvStructs{}, err // Return error jika gagal load config
 	}
 
 	err = viper.Unmarshal(&config)
