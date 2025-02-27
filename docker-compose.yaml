@@ -8,7 +8,7 @@ services:
     environment:
       MYSQL_DATABASE: db_go
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_PASSWORD: root  # Ditambahkan agar tidak ada error user
+      MYSQL_PASSWORD: root  
     ports:
       - "3306:3306"
     volumes:

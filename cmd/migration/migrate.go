@@ -219,7 +219,6 @@ func templateModelFile(db *gorm.DB, tableName string) {
 		}
 	}
 
-	// Buat file model
 	modelFilename := fmt.Sprintf("%s/%s.go", modelsDir, structName)
 	file, err := os.Create(modelFilename)
 	if err != nil {
@@ -227,7 +226,6 @@ func templateModelFile(db *gorm.DB, tableName string) {
 	}
 	defer file.Close()
 
-	// Ambil informasi kolom dari tabel
 	columns := []struct {
 		Field   string
 		Type    string
@@ -236,10 +234,8 @@ func templateModelFile(db *gorm.DB, tableName string) {
 		Default string
 		Extra   string
 	}{}
-
 	db.Raw(fmt.Sprintf("SHOW COLUMNS FROM %s", tableName)).Scan(&columns)
 
-	// foreign key dari tabel
 	foreignKeys := map[string]string{}
 	rows, _ := db.Raw(fmt.Sprintf("SHOW CREATE TABLE %s", tableName)).Rows()
 	defer rows.Close()
@@ -250,17 +246,13 @@ func templateModelFile(db *gorm.DB, tableName string) {
 		matches := re.FindAllStringSubmatch(createStmt, -1)
 		for _, match := range matches {
 			if len(match) > 3 {
-				foreignKeys[match[1]] = match[2] // nama field dan tabel referensi
+				foreignKeys[match[1]] = match[2]
 			}
 		}
 	}
 
-	// struct model
-	modelContent := fmt.Sprintf(`package models
+	modelContent := fmt.Sprintf("package models\n\ntype %s struct {", structName)
 
-type %s struct {`, structName)
-
-	// Loop untuk membuat field dalam struct
 	for _, col := range columns {
 		fieldName := titleCase.String(strings.ReplaceAll(col.Field, "_", " "))
 		fieldName = strings.ReplaceAll(fieldName, " ", "")
@@ -277,16 +269,19 @@ type %s struct {`, structName)
 			colType = "time.Time"
 		}
 
-		gormTag := fmt.Sprintf("`gorm:\"column:%s\"`", col.Field)
+		gormTag := fmt.Sprintf(`gorm:"column:%s"`, col.Field)
+		dbTag := fmt.Sprintf(`db:"%s"`, col.Field)
+		tags := fmt.Sprintf("`%s %s`", dbTag, gormTag)
+
 		if col.Key == "PRI" {
-			gormTag = "`gorm:\"primaryKey\"`"
+			tags = fmt.Sprintf("`db:\"%s\" gorm:\"primaryKey;column:%s\"`", col.Field, col.Field)
 		}
 
-		// if col == foreign key
 		if fkTable, exists := foreignKeys[col.Field]; exists {
-			gormTag = fmt.Sprintf("`gorm:\"index;column:%s\"`", col.Field)
-			colType = "*int"
-			modelContent += fmt.Sprintf("\n\t%s %s %s", fieldName, colType, gormTag)
+			tags = fmt.Sprintf("`db:\"%s\" gorm:\"index;column:%s\"`", col.Field, col.Field)
+			colType = "int"
+
+			modelContent += fmt.Sprintf("\n\t%s %s %s", fieldName, colType, tags)
 
 			relatedStruct := titleCase.String(strings.ReplaceAll(fkTable, "_", " "))
 			relatedStruct = strings.ReplaceAll(relatedStruct, " ", "")
@@ -294,13 +289,12 @@ type %s struct {`, structName)
 				relatedStruct = relatedStruct[:len(relatedStruct)-1]
 			}
 
-			// relasi dalam struct
-			modelContent += fmt.Sprintf("\n\t%s %s `gorm:\"foreignKey:%s;references:Id;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;\"`",
+			modelContent += fmt.Sprintf("\n\t%s %s `gorm:\"foreignKey:%s;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;\"`",
 				relatedStruct, relatedStruct, fieldName)
 			continue
 		}
 
-		modelContent += fmt.Sprintf("\n\t%s %s %s", fieldName, colType, gormTag)
+		modelContent += fmt.Sprintf("\n\t%s %s %s", fieldName, colType, tags)
 	}
 
 	modelContent += "\n}"

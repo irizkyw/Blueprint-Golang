@@ -54,7 +54,21 @@ func (uc *UserController) CreateUser(c *fiber.Ctx) error {
 		return uc.Error(c, "Invalid request", 400)
 	}
 
-	lastID, err := uc.DB.Create("users", []string{"name", "email"}, []interface{}{user.Name, user.Email})
+	cols := []string{"name", "email"}
+	val := []interface{}{user.Name, user.Email}
+
+	if user.RoleId != 0 {
+		err := uc.DB.Find("roles", user.RoleId, &user.Role)
+		if err != nil {
+			return uc.Error(c, "Invalid role id does not exist", 400)
+		}
+
+		cols = append(cols, "role_id")
+		val = append(val, user.RoleId)
+	}
+
+	lastID, err := uc.DB.Create("users", cols, val)
+
 	if err != nil {
 		return uc.Error(c, "Failed to insert user", 500)
 	}

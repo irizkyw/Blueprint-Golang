@@ -4,15 +4,15 @@ import "gorm.io/gorm"
 
 func Up20250226160158Users(db *gorm.DB) error {
 	type Roles struct {
-		ID   int    `gorm:"primaryKey"`
+		ID   int32  `gorm:"primaryKey"`
 		Name string `gorm:"type:varchar(50);unique"`
 	}
 
 	type Users struct {
-		ID     int    `gorm:"primaryKey"`
+		ID     int32  `gorm:"primaryKey"`
 		Name   string `gorm:"type:varchar(100)"`
 		Email  string `gorm:"type:varchar(100);unique"`
-		RoleID int    `gorm:"index"`
+		RoleID int32  `gorm:"index"`
 
 		Role *Roles `gorm:"foreignKey:RoleID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	}

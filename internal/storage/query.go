@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 )
 
 type DBClient struct {
@@ -48,6 +50,38 @@ func stringJoin(items []string, separator string) string {
 	return result
 }
 
+func handleNestedRelations(c *DBClient, dest interface{}) {
+	v := reflect.ValueOf(dest).Elem()
+	typ := v.Type()
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		if relTable, relID, ok := extractForeignKey(v, field); ok {
+			relStruct := reflect.New(field.Type.Elem()).Interface()
+			if err := c.Find(relTable, relID, relStruct); err == nil {
+				v.Field(i).Set(reflect.ValueOf(relStruct))
+			}
+		}
+	}
+}
+
+func extractForeignKey(v reflect.Value, field reflect.StructField) (string, int, bool) {
+	gormTag := field.Tag.Get("gorm")
+	if strings.Contains(gormTag, "foreignKey:") {
+		parts := strings.Split(gormTag, ";")
+		for _, part := range parts {
+			if strings.HasPrefix(part, "foreignKey:") {
+				relKey := strings.TrimPrefix(part, "foreignKey:")
+				relIDField := v.FieldByName(relKey)
+				if relIDField.IsValid() && relIDField.CanInt() {
+					relTable := strings.ToLower(field.Type.Elem().Name()) + "s"
+					return relTable, int(relIDField.Int()), true
+				}
+			}
+		}
+	}
+	return "", 0, false
+}
+
 func (c *DBClient) Find(table string, id int, dest interface{}) error {
 	query := fmt.Sprintf("SELECT * FROM `%s` WHERE id = ?", table)
 	row := c.DB.QueryRow(query, id)
@@ -68,6 +102,7 @@ func (c *DBClient) Find(table string, id int, dest interface{}) error {
 	}
 
 	copyValuesToStruct(values, dest, columns)
+	handleNestedRelations(c, dest)
 	return nil
 }
 
@@ -139,7 +174,24 @@ func getStructFields(model interface{}) []string {
 	val := reflect.TypeOf(model).Elem()
 	fields := []string{}
 	for i := 0; i < val.NumField(); i++ {
-		fields = append(fields, val.Field(i).Tag.Get("db")) // Pakai tag `db:"column_name"`
+		field := val.Field(i)
+		column := field.Tag.Get("db") // Coba "db" dulu
+		if column == "" {
+			// Kalau "db" kosong, coba pakai "gorm"
+			gormTag := field.Tag.Get("gorm")
+			if strings.Contains(gormTag, "column:") {
+				parts := strings.Split(gormTag, ";")
+				for _, part := range parts {
+					if strings.HasPrefix(part, "column:") {
+						column = strings.TrimPrefix(part, "column:")
+						break
+					}
+				}
+			}
+		}
+		if column != "" {
+			fields = append(fields, column)
+		}
 	}
 	return fields
 }
@@ -156,11 +208,50 @@ func copyValuesToStruct(values []interface{}, dest interface{}, columns []string
 				fieldValue := v.Field(j)
 				if fieldValue.CanSet() {
 					val := values[i].(*interface{})
+
+					// Debugging log
+					// fmt.Printf("Setting field: %s, Value: %v, Type: %T\n", field.Name, *val, *val)
+
 					switch fieldValue.Kind() {
 					case reflect.String:
-						fieldValue.SetString(string((*val).([]uint8)))
+						switch v := (*val).(type) {
+						case []uint8:
+							fieldValue.SetString(string(v))
+						case string:
+							fieldValue.SetString(v)
+						case nil:
+							fieldValue.SetString("")
+						default:
+							fieldValue.SetString(fmt.Sprintf("%v", v))
+						}
+
 					case reflect.Int, reflect.Int64:
-						fieldValue.SetInt((*val).(int64))
+						switch v := (*val).(type) {
+						case int:
+							fieldValue.SetInt(int64(v))
+						case int64:
+							fieldValue.SetInt(v)
+						case float64:
+							fieldValue.SetInt(int64(v))
+						case []uint8:
+							intVal, err := strconv.Atoi(string(v))
+							if err == nil {
+								fieldValue.SetInt(int64(intVal))
+							}
+						}
+					case reflect.Float64:
+						if floatVal, ok := (*val).(float64); ok {
+							fieldValue.SetFloat(floatVal)
+						} else if byteSlice, ok := (*val).([]uint8); ok {
+							floatVal, err := strconv.ParseFloat(string(byteSlice), 64)
+							if err == nil {
+								fieldValue.SetFloat(floatVal)
+							}
+						}
+					case reflect.Struct:
+						// Pastikan struct diisi dengan benar
+						structField := fieldValue.Addr().Interface()
+						copyValuesToStruct([]interface{}{*val}, structField, []string{col})
 					default:
 						fieldValue.Set(reflect.ValueOf(*val))
 					}
