@@ -8,6 +8,7 @@ func Up20250226170143Savings(db *gorm.DB) error {
 		Name    string `gorm:"type:varchar(100)"`
 		Nominal uint   `gorm:"type:int"`
 	}
+
 	return db.AutoMigrate(&Savings{})
 }
 

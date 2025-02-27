@@ -175,9 +175,8 @@ func getStructFields(model interface{}) []string {
 	fields := []string{}
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
-		column := field.Tag.Get("db") // Coba "db" dulu
+		column := field.Tag.Get("db")
 		if column == "" {
-			// Kalau "db" kosong, coba pakai "gorm"
 			gormTag := field.Tag.Get("gorm")
 			if strings.Contains(gormTag, "column:") {
 				parts := strings.Split(gormTag, ";")
@@ -249,7 +248,6 @@ func copyValuesToStruct(values []interface{}, dest interface{}, columns []string
 							}
 						}
 					case reflect.Struct:
-						// Pastikan struct diisi dengan benar
 						structField := fieldValue.Addr().Interface()
 						copyValuesToStruct([]interface{}{*val}, structField, []string{col})
 					default:
