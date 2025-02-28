@@ -27,7 +27,7 @@ type Database struct {
 	dbType  DBType
 }
 
-func Databases(dbType DBType, host, port, user, password, dbName string, timeout time.Duration) (*Database, func(), error) {
+func ConnectDatabase(dbType DBType, host, port, user, password, dbName string, timeout time.Duration) (*Database, func(), error) {
 	var db Database
 	db.dbType = dbType
 	var cleanup func()

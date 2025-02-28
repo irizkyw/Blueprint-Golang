@@ -14,6 +14,7 @@ type EnvStructs struct {
 	DB_USER     string `mapstructure:"DB_USER"`
 	DB_PASSWORD string `mapstructure:"DB_PASSWORD"`
 	PORT        string `mapstructure:"PORT"`
+	APP_URL     string `mapstructure:"APP_URL"`
 }
 
 func LoadConfig() (config EnvStructs, err error) {
@@ -25,7 +26,9 @@ func LoadConfig() (config EnvStructs, err error) {
 			DB_DATABASE: os.Getenv("DB_NAME"),
 			DB_USER:     os.Getenv("DB_USER"),
 			DB_PASSWORD: os.Getenv("DB_PASSWORD"),
-			PORT:        os.Getenv("PORT"),
+
+			APP_URL: os.Getenv("APP_URL"),
+			PORT:    os.Getenv("PORT"),
 		}, nil
 	}
 

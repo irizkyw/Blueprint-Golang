@@ -30,6 +30,9 @@ func (uc *UserController) GetUsers(c *fiber.Ctx) error {
 		return uc.Error(c, "Internal Server error", fiber.StatusInternalServerError)
 	}
 
+	if len(users) == 0 {
+		return uc.SuccessMessage(c, "Data is null!", fiber.StatusOK)
+	}
 	return uc.Success(c, users, fiber.StatusOK)
 }
 

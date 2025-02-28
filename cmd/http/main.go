@@ -13,7 +13,7 @@ import (
 )
 
 func buildServer(env config.EnvStructs) (*fiber.App, func(), error) {
-	db, cleanupDB, err := database.Databases(database.MySQL, env.DB_HOST, env.DB_PORT, env.DB_USER, env.DB_PASSWORD, env.DB_DATABASE, 10*time.Second)
+	db, cleanupDB, err := database.ConnectDatabase(database.MySQL, env.DB_HOST, env.DB_PORT, env.DB_USER, env.DB_PASSWORD, env.DB_DATABASE, 10*time.Second)
 	if err != nil {
 		return nil, nil, err
 	}
