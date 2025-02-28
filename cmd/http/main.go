@@ -5,7 +5,6 @@ import (
 	"backends/internal/routes"
 	database "backends/internal/storage/databases"
 	"backends/pkg/shutdown"
-	"fmt"
 	"os"
 	"time"
 
@@ -30,18 +29,16 @@ func buildServer(env config.EnvStructs) (*fiber.App, func(), error) {
 	if db != nil {
 		routes.SetupRoutes(app, db.GetSQLDB())
 	} else {
-		fmt.Println("Database not available, only error handler displayed.")
+		golog.Info("Database not available, only error handler displayed.")
+		golog.Info("Please CTRL+C for shutdown!")
 		app.Use(func(c *fiber.Ctx) error {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"code":  fiber.ErrInternalServerError,
-				"error": "Internal Server error",
-			})
+			return c.Status(fiber.ErrInternalServerError.Code).JSON(fiber.ErrInternalServerError)
 		})
 	}
 
 	cleanup := func() {
 		if cleanupDB != nil {
-			fmt.Println("Closing database connection...")
+			golog.Info("Closing database connection...")
 			cleanupDB()
 		}
 	}
