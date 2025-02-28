@@ -55,7 +55,7 @@ func run(env config.EnvStructs) (func(), error) {
 	}
 
 	go func() {
-		if err := app.Listen("0.0.0.0:" + env.PORT); err != nil {
+		if err := app.Listen(env.APP_URL + ":" + env.PORT); err != nil {
 			fmt.Printf("Error starting server: %v\n", err)
 		}
 	}()
