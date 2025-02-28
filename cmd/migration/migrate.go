@@ -14,21 +14,18 @@ import (
 	"backends/migrations"
 )
 
-// Struct untuk menyimpan metadata tabel
 type TableInfo struct {
 	Name      string
 	Columns   []ColumnInfo
 	Relations []Relation
 }
 
-// Struct untuk menyimpan informasi kolom
 type ColumnInfo struct {
 	Name string
 	Type string
 	Tag  string
 }
 
-// Struct untuk menyimpan relasi antar tabel
 type Relation struct {
 	RelatedTable string
 	ForeignKey   string
@@ -141,7 +138,7 @@ func main() {
 
 	dsn := fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		cfg.MYSQL_USER, cfg.MYSQL_PASSWORD, cfg.MYSQL_HOST, cfg.MYSQL_PORT, cfg.MYSQL_DB,
+		cfg.DB_USER, cfg.DB_PASSWORD, cfg.DB_HOST, cfg.DB_PORT, cfg.DB_DATABASE,
 	)
 
 	action := flag.String("action", "", "choose: migrate | create-migration | fresh")

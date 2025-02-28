@@ -3,27 +3,24 @@ package main
 import (
 	"backends/config"
 	"backends/internal/routes"
-	"backends/internal/storage"
+	database "backends/internal/storage/databases"
 	"backends/pkg/shutdown"
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 func buildServer(env config.EnvStructs) (*fiber.App, func(), error) {
-	db, cleanupDB, err := storage.ConnectMySQL(env.MYSQL_HOST, env.MYSQL_PORT, env.MYSQL_USER, env.MYSQL_PASSWORD, env.MYSQL_DB, 10*time.Second)
+	db, cleanupDB, err := database.Databases(database.MySQL, env.DB_HOST, env.DB_PORT, env.DB_USER, env.DB_PASSWORD, env.DB_DATABASE, 10*time.Second)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	app := fiber.New()
 
-	useAuth, _ := strconv.ParseBool(os.Getenv("USE_AUTH")) //.env | USE_AUTH=true/false
-
-	routes.SetupRoutes(app, db, useAuth)
+	routes.SetupRoutes(app, db.GetSQLDB())
 
 	cleanup := func() {
 		fmt.Println("Closing database connection...")
@@ -69,6 +66,6 @@ func main() {
 	}
 	defer cleanup()
 
-	// Tunggu sinyal shutdown (Ctrl+C)
+	// shutdown (Ctrl+C)
 	shutdown.WaitForShutdown()
 }

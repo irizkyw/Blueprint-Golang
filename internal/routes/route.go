@@ -2,14 +2,14 @@ package routes
 
 import (
 	"backends/internal/controllers"
-	"backends/internal/storage"
+	"backends/internal/storage/query"
 	"database/sql"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func SetupRoutes(app *fiber.App, db *sql.DB, useAuth bool) {
-	dbClient := storage.NewDBClient(db)
+func SetupRoutes(app *fiber.App, db *sql.DB) {
+	dbClient := query.NewDBClient(db)
 	//userRepo := repository.NewUserRepository(db)
 	userController := controllers.NewUserController(dbClient)
 

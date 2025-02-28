@@ -8,24 +8,24 @@ import (
 )
 
 type EnvStructs struct {
-	MYSQL_HOST     string `mapstructure:"MYSQL_HOST"`
-	MYSQL_PORT     string `mapstructure:"MYSQL_PORT"`
-	MYSQL_DB       string `mapstructure:"MYSQL_DB"`
-	MYSQL_USER     string `mapstructure:"MYSQL_USER"`
-	MYSQL_PASSWORD string `mapstructure:"MYSQL_PASSWORD"`
-	PORT           string `mapstructure:"PORT"`
+	DB_HOST     string `mapstructure:"DB_HOST"`
+	DB_PORT     string `mapstructure:"DB_PORT"`
+	DB_DATABASE string `mapstructure:"DB_DATABASE"`
+	DB_USER     string `mapstructure:"DB_USER"`
+	DB_PASSWORD string `mapstructure:"DB_PASSWORD"`
+	PORT        string `mapstructure:"PORT"`
 }
 
 func LoadConfig() (config EnvStructs, err error) {
 	env := os.Getenv("GO_ENV")
 	if env == "production" || env == "development" {
 		return EnvStructs{
-			MYSQL_HOST:     os.Getenv("DB_HOST"),
-			MYSQL_PORT:     os.Getenv("MYSQL_PORT"),
-			MYSQL_DB:       os.Getenv("DB_NAME"),
-			MYSQL_USER:     os.Getenv("DB_USER"),
-			MYSQL_PASSWORD: os.Getenv("DB_PASSWORD"),
-			PORT:           os.Getenv("PORT"),
+			DB_HOST:     os.Getenv("DB_HOST"),
+			DB_PORT:     os.Getenv("DB_PORT"),
+			DB_DATABASE: os.Getenv("DB_NAME"),
+			DB_USER:     os.Getenv("DB_USER"),
+			DB_PASSWORD: os.Getenv("DB_PASSWORD"),
+			PORT:        os.Getenv("PORT"),
 		}, nil
 	}
 
@@ -44,24 +44,24 @@ func LoadConfig() (config EnvStructs, err error) {
 
 	err = viper.Unmarshal(&config)
 
-	if config.MYSQL_HOST == "" {
-		err = errors.New("MYSQL_HOST is required")
+	if config.DB_HOST == "" {
+		err = errors.New("DB_HOST is required")
 		return
 	}
-	if config.MYSQL_PORT == "" {
-		err = errors.New("MYSQL_PORT is required")
+	if config.DB_PORT == "" {
+		err = errors.New("DB_PORT is required")
 		return
 	}
-	if config.MYSQL_DB == "" {
-		err = errors.New("MYSQL_DB is required")
+	if config.DB_DATABASE == "" {
+		err = errors.New("DB_DATABASE is required")
 		return
 	}
-	if config.MYSQL_USER == "" {
-		err = errors.New("MYSQL_USER is required")
+	if config.DB_USER == "" {
+		err = errors.New("DB_USER is required")
 		return
 	}
-	if config.MYSQL_PASSWORD == "" && env == "production" {
-		err = errors.New("MYSQL_PASSWORD is required")
+	if config.DB_PASSWORD == "" && env == "production" {
+		err = errors.New("DB_PASSWORD is required")
 		return
 	}
 	return

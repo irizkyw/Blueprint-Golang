@@ -3,7 +3,7 @@ package controllers
 import (
 	controllers "backends/internal/controllers/handler"
 	"backends/internal/models"
-	"backends/internal/storage"
+	"backends/internal/storage/query"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,10 +15,10 @@ import (
 
 type UserController struct {
 	controllers.Controller
-	DB *storage.DBClient
+	DB *query.DBClient
 }
 
-func NewUserController(db *storage.DBClient) *UserController {
+func NewUserController(db *query.DBClient) *UserController {
 	return &UserController{
 		DB: db,
 	}
