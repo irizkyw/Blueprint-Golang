@@ -32,7 +32,7 @@ func buildServer(env config.EnvStructs) (*fiber.App, func(), error) {
 		fmt.Println("Database not available, only error handler displayed.")
 		app.Use(func(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"code":  500,
+				"code":  fiber.ErrInternalServerError,
 				"error": "Internal Server error",
 			})
 		})
