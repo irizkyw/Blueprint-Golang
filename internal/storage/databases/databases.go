@@ -7,7 +7,8 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql" // MySQL driver
-	_ "github.com/lib/pq"              // PostgreSQL driver
+	"github.com/gofiber/fiber/v2/log"
+	_ "github.com/lib/pq" // PostgreSQL driver
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -88,7 +89,7 @@ func ConnectDatabase(dbType DBType, host, port, user, password, dbName string, t
 		return nil, nil, fmt.Errorf("unsupported database type: %s", dbType)
 	}
 
-	fmt.Printf("Connected to %s!\n", dbType)
+	log.Info("Connected to %s!\n", dbType)
 	return &db, cleanup, nil
 }
 

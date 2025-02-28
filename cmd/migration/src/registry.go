@@ -2,12 +2,12 @@ package constructmigrations
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/kataras/golog"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -63,7 +63,7 @@ func updateModelRegistry() {
 	modelsDir := "internal/models"
 	files, err := filepath.Glob(modelsDir + "/*.go")
 	if err != nil {
-		log.Fatal("Error reading model files:", err)
+		golog.Fatal("Error reading model files:", err)
 	}
 
 	excludedFiles := map[string]bool{
@@ -97,7 +97,7 @@ var ModelRegistry = []interface{}{`
 
 	err = os.WriteFile(modelsDir+"/registry.go", []byte(registryContent), 0644)
 	if err != nil {
-		log.Fatal("Error updating registry.go:", err)
+		golog.Fatal("Error updating registry.go:", err)
 	}
 
 	fmt.Println("✅ Updated internal/models/registry.go successfully!")

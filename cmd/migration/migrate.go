@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"strings"
 
+	"github.com/kataras/golog"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
@@ -115,13 +115,13 @@ func getRelations(db *gorm.DB, tableName string) []Relation {
 func runMigrations(dsn string) {
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		golog.Fatal("Failed to connect to database:", err)
 	}
 
 	for name, migration := range migrations.MigrationRegistry {
 		fmt.Println("🔄 Running migration:", name)
 		if err := migration(db); err != nil {
-			log.Fatalf("❌ Migration failed: %s -> %v", name, err)
+			golog.Fatalf("❌ Migration failed: %s -> %v", name, err)
 		}
 	}
 
@@ -133,7 +133,7 @@ func runMigrations(dsn string) {
 func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatal("Failed to load config:", err)
+		golog.Fatal("Failed to load config:", err)
 	}
 
 	dsn := fmt.Sprintf(

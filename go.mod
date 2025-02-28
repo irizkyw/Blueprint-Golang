@@ -7,6 +7,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.6
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/viper v1.19.0
 	go.mongodb.org/mongo-driver v1.17.3
 	golang.org/x/text v0.17.0
@@ -22,6 +23,8 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/kataras/golog v0.1.12 // indirect
+	github.com/kataras/pio v0.0.13 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

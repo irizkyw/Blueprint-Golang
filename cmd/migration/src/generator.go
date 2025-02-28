@@ -2,12 +2,12 @@ package constructmigrations
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/kataras/golog"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"gorm.io/gorm"
@@ -25,14 +25,14 @@ func TemplateModelFile(db *gorm.DB, tableName string) {
 	modelsDir := "internal/models"
 	if _, err := os.Stat(modelsDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(modelsDir, os.ModePerm); err != nil {
-			log.Fatal("❌ Error creating models directory:", err)
+			golog.Fatal("❌ Error creating models directory:", err)
 		}
 	}
 
 	modelFilename := fmt.Sprintf("%s/%s.go", modelsDir, structName)
 	file, err := os.Create(modelFilename)
 	if err != nil {
-		log.Fatal("❌ Error creating model file:", err)
+		golog.Fatal("❌ Error creating model file:", err)
 	}
 	defer file.Close()
 
@@ -111,7 +111,7 @@ func TemplateModelFile(db *gorm.DB, tableName string) {
 
 	_, err = file.WriteString(modelContent)
 	if err != nil {
-		log.Fatal("❌ Error writing to model file:", err)
+		golog.Fatal("❌ Error writing to model file:", err)
 	}
 
 	fmt.Println("✅ Model file generated:", modelFilename)
@@ -145,7 +145,7 @@ func Down%s(db *gorm.DB) error {
 
 	err := os.WriteFile(filename, []byte(content), 0644)
 	if err != nil {
-		log.Fatal("Error creating migration file:", err)
+		golog.Fatal("Error creating migration file:", err)
 	}
 
 	fmt.Println("✅ Migration file created:", filename)

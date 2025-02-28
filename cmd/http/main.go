@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/kataras/golog"
 )
 
 func buildServer(env config.EnvStructs) (*fiber.App, func(), error) {
@@ -20,7 +21,7 @@ func buildServer(env config.EnvStructs) (*fiber.App, func(), error) {
 	)
 
 	if err != nil {
-		fmt.Printf("Warning: Failed connection to database: %v\n", err)
+		golog.Warnf("Warning: Failed connection to database: %v\n", err)
 		db = nil
 	}
 
@@ -56,7 +57,7 @@ func run(env config.EnvStructs) (func(), error) {
 
 	go func() {
 		if err := app.Listen(env.APP_URL + ":" + env.PORT); err != nil {
-			fmt.Printf("Error starting server: %v\n", err)
+			golog.Errorf("Error starting server: %v\n", err)
 		}
 	}()
 
@@ -74,14 +75,14 @@ func main() {
 
 	env, err := config.LoadConfig()
 	if err != nil {
-		fmt.Printf("Error loading config: %v\n", err)
+		golog.Errorf("Error loading config: %v\n", err)
 		exitCode = 1
 		return
 	}
 
 	cleanup, err := run(env)
 	if err != nil {
-		fmt.Printf("Error starting server: %v\n", err)
+		golog.Errorf("Error starting server: %v\n", err)
 		exitCode = 1
 		return
 	}

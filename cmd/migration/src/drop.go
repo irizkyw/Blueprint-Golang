@@ -3,11 +3,11 @@ package constructmigrations
 import (
 	"backends/migrations"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/kataras/golog"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"gorm.io/driver/mysql"
@@ -17,7 +17,7 @@ import (
 func DropAllTables(dsn string) {
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal("❌ Failed to connect to database:", err)
+		golog.Fatal("❌ Failed to connect to database:", err)
 	}
 
 	var tables []string
@@ -38,7 +38,7 @@ func DropAllTables(dsn string) {
 func DropTable(dsn string, tableName string) {
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal("❌ Failed to connect to database:", err)
+		golog.Fatal("❌ Failed to connect to database:", err)
 	}
 
 	if db.Migrator().HasTable(tableName) {
@@ -84,7 +84,7 @@ func DeleteModelFile(tableName string) {
 func ResetDatabase(dsn string) {
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		golog.Fatal("Failed to connect to database:", err)
 	}
 
 	fmt.Println("⚠️ Dropping all tables...")
