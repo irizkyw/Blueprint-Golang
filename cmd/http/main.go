@@ -13,22 +13,41 @@ import (
 )
 
 func buildServer(env config.EnvStructs) (*fiber.App, func(), error) {
-	db, cleanupDB, err := database.ConnectDatabase(database.MySQL, env.DB_HOST, env.DB_PORT, env.DB_USER, env.DB_PASSWORD, env.DB_DATABASE, 10*time.Second)
+	db, cleanupDB, err := database.ConnectDatabase(
+		database.MySQL,
+		env.DB_HOST, env.DB_PORT, env.DB_USER, env.DB_PASSWORD, env.DB_DATABASE,
+		10*time.Second,
+	)
+
 	if err != nil {
-		return nil, nil, err
+		fmt.Printf("Warning: Failed connection to database: %v\n", err)
+		db = nil
 	}
 
 	app := fiber.New()
 
-	routes.SetupRoutes(app, db.GetSQLDB())
+	if db != nil {
+		routes.SetupRoutes(app, db.GetSQLDB())
+	} else {
+		fmt.Println("Database not available, only error handler displayed.")
+		app.Use(func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"code":  500,
+				"error": "Internal Server error",
+			})
+		})
+	}
 
 	cleanup := func() {
-		fmt.Println("Closing database connection...")
-		cleanupDB()
+		if cleanupDB != nil {
+			fmt.Println("Closing database connection...")
+			cleanupDB()
+		}
 	}
 
 	return app, cleanup, nil
 }
+
 func run(env config.EnvStructs) (func(), error) {
 	app, cleanup, err := buildServer(env)
 	if err != nil {
@@ -36,7 +55,9 @@ func run(env config.EnvStructs) (func(), error) {
 	}
 
 	go func() {
-		app.Listen("0.0.0.0:" + env.PORT)
+		if err := app.Listen("0.0.0.0:" + env.PORT); err != nil {
+			fmt.Printf("Error starting server: %v\n", err)
+		}
 	}()
 
 	return func() {
@@ -66,6 +87,6 @@ func main() {
 	}
 	defer cleanup()
 
-	// shutdown (Ctrl+C)
+	// Tunggu shutdown (Ctrl+C)
 	shutdown.WaitForShutdown()
 }

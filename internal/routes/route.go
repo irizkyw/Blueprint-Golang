@@ -27,4 +27,5 @@ func SetupRoutes(app *fiber.App, db *sql.DB) {
 				"message": "404 Not Found",
 			})
 	})
+
 }
