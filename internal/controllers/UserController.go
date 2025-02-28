@@ -27,7 +27,7 @@ func NewUserController(db *storage.DBClient) *UserController {
 func (uc *UserController) GetUsers(c *fiber.Ctx) error {
 	var users []models.User
 	if err := uc.DB.All("users", &users); err != nil {
-		return uc.Error(c, "Internal Server error", 500)
+		return uc.Error(c, "Internal Server error", fiber.StatusInternalServerError)
 	}
 
 	return uc.Success(c, users, fiber.StatusOK)
@@ -36,31 +36,30 @@ func (uc *UserController) GetUsers(c *fiber.Ctx) error {
 func (uc *UserController) GetUserByID(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
-		return uc.Error(c, "Invalid user ID", 400)
+		return uc.Error(c, "Invalid user ID", fiber.StatusBadRequest)
 	}
 
 	var user models.User
 	if err := uc.DB.Find("users", id, &user); err != nil {
-		return uc.Error(c, "User not found", 404)
+		return uc.Error(c, "User not found", fiber.StatusNotFound)
 	}
 
-	return uc.Success(c, fiber.Map{"message": "Data retrieved"}, fiber.StatusOK)
+	return uc.Success(c, fiber.Map{"message": "Data retrieved", "user": user}, fiber.StatusOK)
 }
 
 func (uc *UserController) CreateUser(c *fiber.Ctx) error {
 	var user models.User
 
 	if err := c.BodyParser(&user); err != nil {
-		return uc.Error(c, "Invalid request", 400)
+		return uc.Error(c, "Invalid request", fiber.StatusBadRequest)
 	}
 
 	cols := []string{"name", "email"}
 	val := []interface{}{user.Name, user.Email}
 
 	if user.RoleId != 0 {
-		err := uc.DB.Find("roles", user.RoleId, &user.Role)
-		if err != nil {
-			return uc.Error(c, "Invalid role id does not exist", 400)
+		if err := uc.DB.Find("roles", user.RoleId, &user.Role); err != nil {
+			return uc.Error(c, "Invalid role id does not exist", fiber.StatusBadRequest)
 		}
 
 		cols = append(cols, "role_id")
@@ -68,9 +67,8 @@ func (uc *UserController) CreateUser(c *fiber.Ctx) error {
 	}
 
 	lastID, err := uc.DB.Create("users", cols, val)
-
 	if err != nil {
-		return uc.Error(c, "Failed to insert user", 500)
+		return uc.Error(c, "Failed to insert user", fiber.StatusInternalServerError)
 	}
 
 	user.Id = int(lastID)

@@ -50,46 +50,9 @@ func stringJoin(items []string, separator string) string {
 	return result
 }
 
-func handleNestedRelations(c *DBClient, dest interface{}) {
-	v := reflect.ValueOf(dest).Elem()
-	typ := v.Type()
-	for i := 0; i < typ.NumField(); i++ {
-		field := typ.Field(i)
-		if relTable, relID, ok := extractForeignKey(v, field); ok {
-			relStruct := reflect.New(field.Type.Elem()).Interface()
-			if err := c.Find(relTable, relID, relStruct); err == nil {
-				v.Field(i).Set(reflect.ValueOf(relStruct))
-			}
-		}
-	}
-}
-
-func extractForeignKey(v reflect.Value, field reflect.StructField) (string, int, bool) {
-	gormTag := field.Tag.Get("gorm")
-	if strings.Contains(gormTag, "foreignKey:") {
-		parts := strings.Split(gormTag, ";")
-		for _, part := range parts {
-			if strings.HasPrefix(part, "foreignKey:") {
-				relKey := strings.TrimPrefix(part, "foreignKey:")
-				relIDField := v.FieldByName(relKey)
-				if relIDField.IsValid() && relIDField.CanInt() {
-					relTable := strings.ToLower(field.Type.Elem().Name()) + "s"
-					return relTable, int(relIDField.Int()), true
-				}
-			}
-		}
-	}
-	return "", 0, false
-}
-
 func (c *DBClient) Find(table string, id int, dest interface{}) error {
 	query := fmt.Sprintf("SELECT * FROM `%s` WHERE id = ?", table)
 	row := c.DB.QueryRow(query, id)
-
-	v := reflect.ValueOf(dest)
-	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("dest must be a pointer to a struct")
-	}
 
 	columns := getStructFields(dest)
 	values := make([]interface{}, len(columns))
@@ -104,6 +67,38 @@ func (c *DBClient) Find(table string, id int, dest interface{}) error {
 	copyValuesToStruct(values, dest, columns)
 	handleNestedRelations(c, dest)
 	return nil
+}
+
+func handleNestedRelations(c *DBClient, dest interface{}) {
+	v := reflect.ValueOf(dest).Elem()
+	typ := v.Type()
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		if relTable, relID, ok := extractForeignKey(v, field); ok {
+			relStruct := reflect.New(field.Type).Interface()
+			if err := c.Find(relTable, relID, relStruct); err == nil {
+				v.Field(i).Set(reflect.ValueOf(relStruct).Elem())
+			}
+		}
+	}
+}
+
+func extractForeignKey(v reflect.Value, field reflect.StructField) (string, int, bool) {
+	gormTag := field.Tag.Get("gorm")
+	if strings.Contains(gormTag, "foreignKey:") {
+		parts := strings.Split(gormTag, ";")
+		for _, part := range parts {
+			if strings.HasPrefix(part, "foreignKey:") {
+				relKey := strings.TrimPrefix(part, "foreignKey:")
+				relIDField := v.FieldByName(relKey)
+				if relIDField.IsValid() && relIDField.Kind() == reflect.Int {
+					relTable := strings.ToLower(field.Type.Name()) + "s"
+					return relTable, int(relIDField.Int()), true
+				}
+			}
+		}
+	}
+	return "", 0, false
 }
 
 func (c *DBClient) All(table string, dest interface{}) error {
@@ -135,6 +130,7 @@ func (c *DBClient) All(table string, dest interface{}) error {
 		}
 
 		copyValuesToStruct(values, item.Addr().Interface(), columns)
+		handleNestedRelations(c, item.Addr().Interface())
 		resultSlice = reflect.Append(resultSlice, item)
 	}
 

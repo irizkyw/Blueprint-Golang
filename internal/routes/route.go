@@ -19,4 +19,12 @@ func SetupRoutes(app *fiber.App, db *sql.DB, useAuth bool) {
 	api.Get("/users/:id", userController.GetUserByID)
 	api.Post("/users", userController.CreateUser)
 	api.Post("/user/upload", userController.UploadImage)
+
+	app.Use(func(c *fiber.Ctx) error {
+		return c.Status(fiber.StatusNotFound).JSON(
+			fiber.Map{
+				"error":   true,
+				"message": "404 Not Found",
+			})
+	})
 }
