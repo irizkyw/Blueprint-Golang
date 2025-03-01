@@ -117,41 +117,6 @@ func TemplateModelFile(db *gorm.DB, tableName string) {
 	fmt.Println("✅ Model file generated:", modelFilename)
 }
 
-func TemplateMigration(tableName string) {
-	timestamp := time.Now().Format("20060102150405")
-	titleCase := cases.Title(language.English)
-	structName := titleCase.String(strings.ReplaceAll(tableName, "_", " "))
-	structName = strings.ReplaceAll(structName, " ", "")
-
-	funcName := fmt.Sprintf("Up%s%s", timestamp, structName)
-	filename := fmt.Sprintf("migrations/%s_%s.go", timestamp, tableName)
-
-	content := fmt.Sprintf(`package migrations
-
-import "gorm.io/gorm"
-
-func %s(db *gorm.DB) error {
-	type %s struct {
-		ID   uint   `+"`gorm:\"primaryKey\"`"+`
-		Name string `+"`gorm:\"type:varchar(100)\"`"+`
-	}
-	return db.AutoMigrate(&%s{})
-}
-
-func Down%s(db *gorm.DB) error {
-	return db.Migrator().DropTable("%s")
-}
-`, funcName, structName, structName, funcName, tableName)
-
-	err := os.WriteFile(filename, []byte(content), 0644)
-	if err != nil {
-		golog.Fatal("Error creating migration file:", err)
-	}
-
-	fmt.Println("✅ Migration file created:", filename)
-	UpdateRegistryMigrations()
-}
-
 func ExtractTableName(migrationName string) string {
 	re := regexp.MustCompile(`Up\d+([A-Za-z]+)`)
 	matches := re.FindStringSubmatch(migrationName)
@@ -168,24 +133,30 @@ func CreateMigration(tableName string) {
 	structName = strings.ReplaceAll(structName, " ", "")
 
 	funcName := fmt.Sprintf("Up%s%s", timestamp, structName)
+	downFuncName := fmt.Sprintf("Down%s%s", timestamp, structName)
 	filename := fmt.Sprintf("migrations/%s_%s.go", timestamp, tableName)
 
 	content := fmt.Sprintf(`package migrations
 
-import "gorm.io/gorm"
+import (
+	"time"
+	"gorm.io/gorm"
+)
 
 func %s(db *gorm.DB) error {
 	type %s struct {
-		ID   uint   `+"`gorm:\"primaryKey\"`"+`
-		Name string `+"`gorm:\"type:varchar(100)\"`"+`
+		ID        uint           `+"`gorm:\"primaryKey\"`"+`
+		Name      string         `+"`gorm:\"type:varchar(100)\"`"+`
+		CreatedAt time.Time      `+"`gorm:\"autoCreateTime\"`"+`
+		UpdatedAt time.Time      `+"`gorm:\"autoUpdateTime\"`"+`
 	}
 	return db.AutoMigrate(&%s{})
 }
 
-func Down%s(db *gorm.DB) error {
+func %s(db *gorm.DB) error {
 	return db.Migrator().DropTable("%s")
 }
-`, funcName, structName, structName, funcName, tableName)
+`, funcName, structName, structName, downFuncName, tableName)
 
 	err := os.WriteFile(filename, []byte(content), 0644)
 	if err != nil {

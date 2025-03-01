@@ -3,7 +3,6 @@ package controllers
 import "github.com/gofiber/fiber/v2"
 
 type Response struct {
-	Success bool        `json:"success"`
 	Code    int         `json:"code"`
 	Data    interface{} `json:"data,omitempty"`
 	Error   *string     `json:"error,omitempty"`
@@ -14,16 +13,14 @@ type Controller struct{}
 
 func (c *Controller) Success(ctx *fiber.Ctx, data interface{}, code int) error {
 	response := Response{
-		Success: true,
-		Code:    code,
-		Data:    data,
+		Code: code,
+		Data: data,
 	}
 	return ctx.Status(code).JSON(response)
 }
 
 func (c *Controller) SuccessMessage(ctx *fiber.Ctx, message string, code int) error {
 	response := Response{
-		Success: true,
 		Code:    code,
 		Message: &message,
 	}
@@ -32,9 +29,8 @@ func (c *Controller) SuccessMessage(ctx *fiber.Ctx, message string, code int) er
 
 func (c *Controller) Error(ctx *fiber.Ctx, message string, code int) error {
 	response := Response{
-		Success: false,
-		Code:    code,
-		Error:   &message,
+		Code:  code,
+		Error: &message,
 	}
 	return ctx.Status(code).JSON(response)
 }

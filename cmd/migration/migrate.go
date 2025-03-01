@@ -153,7 +153,7 @@ func main() {
 			fmt.Println("Please provide a table name using --table=table_name")
 			return
 		}
-		constructmigrations.TemplateMigration(*tableName)
+		constructmigrations.CreateMigration(*tableName)
 		constructmigrations.UpdateRegistryMigrations()
 	case "fresh":
 		constructmigrations.ResetDatabase(dsn)
