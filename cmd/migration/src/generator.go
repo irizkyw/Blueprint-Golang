@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TemplateModelFile(db *gorm.DB, tableName string) {
+func CreateModelFile(db *gorm.DB, tableName string) {
 	titleCase := cases.Title(language.English)
 	structName := titleCase.String(strings.ReplaceAll(tableName, "_", " "))
 	structName = strings.ReplaceAll(structName, " ", "")
@@ -181,7 +181,7 @@ func CreateModels(db *gorm.DB) {
 			fmt.Print(excludedTables[table])
 			continue
 		}
-		TemplateModelFile(db, table)
+		CreateModelFile(db, table)
 	}
 
 	updateModelRegistry()
